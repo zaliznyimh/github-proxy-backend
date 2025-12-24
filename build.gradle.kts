@@ -32,6 +32,7 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-webflux")
     testImplementation("org.wiremock.integrations:wiremock-spring-boot:3.0.1")
     testImplementation("org.springframework.boot:spring-boot-webtestclient:4.0.0")
+    testImplementation("org.apache.commons:commons-lang3:3.20.0")
 
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }

@@ -1,5 +1,6 @@
 package com.zaliznyimh.github_proxy;
 
+import org.apache.commons.lang3.time.StopWatch;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +16,7 @@ import org.wiremock.spring.EnableWireMock;
 import java.util.List;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureWebTestClient
@@ -37,10 +39,16 @@ class GithubProxyApplicationTests {
         stubFor(get(urlPathEqualTo("/users/" + username + "/repos"))
                 .willReturn(aResponse()
                         .withHeader("Content-Type", "application/json")
+                        .withFixedDelay(1000)
                         .withBody("""
                             [
                                 {
                                     "name": "expected-repo",
+                                    "fork": false,
+                                    "owner": { "login": "test-username" }
+                                },
+                                {
+                                    "name": "second-expected-repo",
                                     "fork": false,
                                     "owner": { "login": "test-username" }
                                 },
@@ -55,6 +63,7 @@ class GithubProxyApplicationTests {
         stubFor(get(urlPathEqualTo("/repos/" + username + "/expected-repo/branches"))
                 .willReturn(aResponse()
                         .withHeader("Content-Type", "application/json")
+                        .withFixedDelay(1000)
                         .withBody("""
                             [
                                 {
@@ -68,22 +77,56 @@ class GithubProxyApplicationTests {
                             ]
                             """)));
 
-        var expectedResponse = new RepositoryResponse(
-                "test-username",
-                "expected-repo",
-                List.of(
+        stubFor(get(urlPathEqualTo("/repos/" + username + "/second-expected-repo/branches"))
+                .willReturn(aResponse()
+                        .withHeader("Content-Type", "application/json")
+                        .withFixedDelay(1000)
+                        .withBody("""
+                            [
+                                {
+                                    "name": "dev",
+                                    "commit": { "sha": "ktw54321" }
+                                },
+                                {
+                                    "name": "feature/virtual-threads",
+                                    "commit": { "sha": "kra67585" }
+                                }
+                            ]
+                            """)));
+
+        var expectedResponse = List.of(
+                new RepositoryResponse("test-username", "expected-repo", List.of(
                         new BranchResponse("main", "qwerty123"),
                         new BranchResponse("feature/admin-panel", "sha12345")
-                ));
+                )),
+                new RepositoryResponse("test-username", "second-expected-repo", List.of(
+                        new BranchResponse("dev", "ktw54321"),
+                        new BranchResponse("feature/virtual-threads", "kra67585")
+                )));
+
+        StopWatch stopwatch = new StopWatch();
+        stopwatch.start();
 
         webTestClient.get()
-                .uri("/api/v1/users/" + username + "/repositories")
+                .uri("/api/v1/users/{username}/repositories", username)
                 .accept(MediaType.APPLICATION_JSON)
                 .exchange()
                 .expectStatus().isOk()
                 .expectBodyList(RepositoryResponse.class)
-                .hasSize(1)
-                .contains(expectedResponse);
+                .hasSize(2)
+                .isEqualTo(expectedResponse);
+
+        stopwatch.stop();
+        long responseTime = stopwatch.getTime();
+
+        verify(1, getRequestedFor(urlPathEqualTo("/users/test-username/repos")));
+        verify(1, getRequestedFor(urlPathEqualTo("/repos/test-username/expected-repo/branches")));
+        verify(1, getRequestedFor(urlPathEqualTo("/repos/test-username/second-expected-repo/branches")));
+        verify(0, getRequestedFor(urlPathEqualTo("/repos/test-username/forked-repo/branches")));
+
+        assertThat(responseTime)
+                .isGreaterThanOrEqualTo(2000L)
+                .isLessThanOrEqualTo(3000L);
     }
 
     @Test

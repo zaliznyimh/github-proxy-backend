@@ -5,6 +5,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
 
 @Service
 class GithubService {
@@ -24,13 +26,25 @@ class GithubService {
 
         log.debug("Found {} repositories for user {}", allUserRepositories.size(), username);
 
-        return allUserRepositories.stream()
-                .filter(repository -> !repository.fork())
-                .map(this::mapToRepositoryResponse)
-                .toList();
+        try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+
+            var futures = allUserRepositories.stream()
+                    .filter(repository -> !repository.fork())
+                    .map(repo -> CompletableFuture.supplyAsync(
+                            () -> mapToRepositoryResponse(repo),
+                            executor
+                    ))
+                    .toList();
+
+            return futures.stream()
+                    .map(CompletableFuture::join)
+                    .toList();
+        }
     }
 
     private RepositoryResponse mapToRepositoryResponse(GitRepository repository) {
+        log.info("Fetching branches for repository {}:", repository.name());
+
         var branches = githubClient.getRepositoryBranches(
                 repository.owner().login(),
                 repository.name()
