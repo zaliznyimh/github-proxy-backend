@@ -31,7 +31,7 @@ class GithubClient {
                     .uri("/users/{username}/repos",username)
                     .retrieve()
                     .body(new ParameterizedTypeReference<>() { });
-        } catch (HttpClientErrorException.NotFound e) {
+        } catch (HttpClientErrorException.NotFound _) {
             throw new UserNotFoundException("Not found account for user with username: " + username);
         }
     }

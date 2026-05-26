@@ -1,0 +1,21 @@
+[versions]
+springBoot = "4.0.0"
+dependencyManagement = "1.1.7"
+wiremockSpringBoot = "3.0.1"
+commonsLang3 = "3.20.0"
+
+[plugins]
+spring-boot = { id = "org.springframework.boot", version.ref = "springBoot" }
+dependency-management = { id = "io.spring.dependency-management", version.ref = "dependencyManagement" }
+
+[libraries]
+spring-boot-starter-web = { module = "org.springframework.boot:spring-boot-starter-web" }
+spring-boot-starter-restclient = { module = "org.springframework.boot:spring-boot-starter-restclient" }
+spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test" }
+spring-boot-starter-webflux = { module = "org.springframework.boot:spring-boot-starter-webflux" }
+spring-boot-webtestclient = { group = "org.springframework.boot", name = "spring-boot-webtestclient", version.ref = "springBoot" }
+
+wiremock-spring-boot = { group = "org.wiremock.integrations", name = "wiremock-spring-boot", version.ref = "wiremockSpringBoot" }
+commons-lang3 = { group = "org.apache.commons", name = "commons-lang3", version.ref = "commonsLang3" }
+
+junit-platform-launcher = { group = "org.junit.platform", name = "junit-platform-launcher" }
